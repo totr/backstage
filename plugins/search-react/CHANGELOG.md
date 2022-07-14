@@ -1,5 +1,16 @@
 # @backstage/plugin-search-react
 
+## 0.2.2
+
+### Patch Changes
+
+- 60408ca9d4: Fix search pagination to reset page cursor also when a term is cleared.
+- Updated dependencies
+  - @backstage/core-components@0.10.0
+  - @backstage/core-plugin-api@1.0.4
+  - @backstage/theme@0.2.16
+  - @backstage/plugin-search-common@0.3.6
+
 ## 0.2.2-next.3
 
 ### Patch Changes

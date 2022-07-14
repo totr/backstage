@@ -1,5 +1,19 @@
 # @backstage/plugin-search-backend
 
+## 0.5.4
+
+### Patch Changes
+
+- a21cd43467: If error is `MissingIndexError` we return a 400 response with a more clear error message.
+- Updated dependencies
+  - @backstage/backend-common@0.14.1
+  - @backstage/plugin-auth-node@0.2.3
+  - @backstage/plugin-permission-common@0.6.3
+  - @backstage/plugin-permission-node@0.6.3
+  - @backstage/errors@1.1.0
+  - @backstage/plugin-search-backend-node@0.6.3
+  - @backstage/plugin-search-common@0.3.6
+
 ## 0.5.4-next.2
 
 ### Patch Changes
