@@ -33,11 +33,17 @@ export type {
   PolicyDecision,
   PermissionCondition,
   PermissionCriteria,
+  PermissionRuleParam,
+  PermissionRuleParams,
   AllOfCriteria,
   AnyOfCriteria,
   NotCriteria,
 } from './api';
 export type { DiscoveryApi } from './discovery';
+export type {
+  MetadataResponse,
+  MetadataResponseSerializedRule,
+} from './integration';
 export type {
   BasicPermission,
   PermissionAttributes,

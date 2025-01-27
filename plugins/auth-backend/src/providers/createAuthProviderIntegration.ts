@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-import { AuthProviderFactory, SignInResolver } from './types';
+import {
+  AuthProviderFactory,
+  SignInResolver,
+} from '@backstage/plugin-auth-node';
 
 /**
  * Creates a standardized representation of an integration with a third-party
@@ -22,6 +25,8 @@ import { AuthProviderFactory, SignInResolver } from './types';
  *
  * The returned object facilitates the creation of provider instances, and
  * supplies built-in sign-in resolvers for the specific provider.
+ *
+ * @public
  */
 export function createAuthProviderIntegration<
   TCreateOptions extends unknown[],

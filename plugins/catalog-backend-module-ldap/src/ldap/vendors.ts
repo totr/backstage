@@ -30,6 +30,7 @@ export type LdapVendor = {
    * The attribute name that holds a universal unique identifier for an entry.
    */
   uuidAttributeName: string;
+
   /**
    * Decode ldap entry values for a given attribute name to their string representation.
    *
@@ -73,6 +74,36 @@ export const FreeIpaVendor: LdapVendor = {
   },
 };
 
+export const AEDirVendor: LdapVendor = {
+  dnAttributeName: 'dn',
+  uuidAttributeName: 'entryUUID',
+  decodeStringAttribute: (entry, name) => {
+    return decode(entry, name, value => {
+      return value.toString();
+    });
+  },
+};
+
+export const GoogleLdapVendor: LdapVendor = {
+  dnAttributeName: 'dn',
+  uuidAttributeName: 'uid',
+  decodeStringAttribute: (entry, name) => {
+    return decode(entry, name, value => {
+      return value.toString();
+    });
+  },
+};
+
+export const LLDAPVendor: LdapVendor = {
+  dnAttributeName: 'dn',
+  uuidAttributeName: 'entryuuid',
+  decodeStringAttribute: (entry, name) => {
+    return decode(entry, name.toLocaleLowerCase('en-US'), value => {
+      return value.toString();
+    });
+  },
+};
+
 // Decode an attribute to a consumer
 function decode(
   entry: SearchEntry,
@@ -95,7 +126,7 @@ function decode(
 function formatGUID(objectGUID: string | Buffer): string {
   let data: Buffer;
   if (typeof objectGUID === 'string') {
-    data = new Buffer(objectGUID, 'binary');
+    data = Buffer.from(objectGUID, 'binary');
   } else {
     data = objectGUID;
   }

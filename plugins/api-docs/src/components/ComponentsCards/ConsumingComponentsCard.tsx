@@ -18,7 +18,7 @@ import {
   ComponentEntity,
   RELATION_API_CONSUMED_BY,
 } from '@backstage/catalog-model';
-import { Typography } from '@material-ui/core';
+import Typography from '@material-ui/core/Typography';
 import {
   EntityTable,
   useEntity,
@@ -31,14 +31,19 @@ import {
   InfoCardVariants,
   Link,
   Progress,
+  TableColumn,
   WarningPanel,
 } from '@backstage/core-components';
 
-type Props = {
+/**
+ * @public
+ */
+export const ConsumingComponentsCard = (props: {
   variant?: InfoCardVariants;
-};
-
-export const ConsumingComponentsCard = ({ variant = 'gridItem' }: Props) => {
+  columns?: TableColumn<ComponentEntity>[];
+}) => {
+  const { variant = 'gridItem', columns = EntityTable.componentEntityColumns } =
+    props;
   const { entity } = useEntity();
   const { entities, loading, error } = useRelatedEntities(entity, {
     type: RELATION_API_CONSUMED_BY,
@@ -80,7 +85,7 @@ export const ConsumingComponentsCard = ({ variant = 'gridItem' }: Props) => {
           </Typography>
         </div>
       }
-      columns={EntityTable.componentEntityColumns}
+      columns={columns}
       entities={entities as ComponentEntity[]}
     />
   );

@@ -14,43 +14,66 @@
  * limitations under the License.
  */
 
+import { SchedulerServiceTaskScheduleDefinitionConfig } from '@backstage/backend-plugin-api';
+
 export interface Config {
   catalog?: {
-    /**
-     * List of provider-specific options and attributes
-     */
     providers?: {
       /**
        * GitlabDiscoveryEntityProvider configuration
        */
-      gitlab?: Record<
-        string,
-        {
+      gitlab?: {
+        [name: string]: {
           /**
            * (Required) Gitlab's host name.
-           * @visibility backend
            */
           host: string;
           /**
            * (Optional) Gitlab's group[/subgroup] where the discovery is done.
-           * If not defined the whole project will be scanned.
-           * @visibility backend
+           * If not defined the whole instance will be scanned.
            */
           group?: string;
           /**
            * (Optional) Default branch to read the catalog-info.yaml file.
            * If not set, 'master' will be used.
-           * @visibility backend
            */
           branch?: string;
           /**
            * (Optional) The name used for the catalog file.
            * If not set, 'catalog-info.yaml' will be used.
-           * @visibility backend
            */
           entityFilename?: string;
-        }
-      >;
+          /**
+           * (Optional) TaskScheduleDefinition for the refresh.
+           */
+          schedule?: SchedulerServiceTaskScheduleDefinitionConfig;
+          /**
+           * (Optional) RegExp for the Project Name Pattern
+           */
+          projectPattern?: string;
+          /**
+           * (Optional) RegExp for the User Name Pattern
+           */
+          userPattern?: string;
+          /**
+           * (Optional) RegExp for the Group Name Pattern
+           */
+          groupPattern?: string;
+          /**
+           * (Optional) Skip forked repository
+           */
+          skipForkedRepos?: boolean;
+          /**
+           * (Optional) Include archived repository
+           */
+          includeArchivedRepos?: boolean;
+          /**
+           * (Optional) A list of strings containing the paths of the repositories to skip
+           * Should be in the format group/subgroup/repo, with no leading or trailing slashes.
+           */
+          excludeRepos?: string[];
+        };
+      };
     };
   };
 }

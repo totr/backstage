@@ -30,8 +30,38 @@ export interface Config {
       /**
        * Token used to authenticate requests.
        * @visibility secret
+       * @deprecated Use `credentials` instead.
        */
       token?: string;
+
+      /**
+       * The credential to use for requests.
+       *
+       * If no credential is specified anonymous access is used.
+       *
+       * @deepVisibility secret
+       * @deprecated Use `credentials` instead.
+       */
+      credential?: {
+        clientId?: string;
+        clientSecret?: string;
+        tenantId?: string;
+        personalAccessToken?: string;
+      };
+
+      /**
+       * The credentials to use for requests. If multiple credentials are specified the first one that matches the organization is used.
+       * If not organization matches the first credential without an organization is used.
+       *
+       * If no credentials are specified at all, either a default credential (for Azure DevOps) or anonymous access (for Azure DevOps Server) is used.
+       * @deepVisibility secret
+       */
+      credentials?: {
+        clientId?: string;
+        clientSecret?: string;
+        tenantId?: string;
+        personalAccessToken?: string;
+      }[];
     }>;
 
     /**
@@ -93,6 +123,16 @@ export interface Config {
        */
       token?: string;
       /**
+       * Username used to authenticate requests with Basic Auth.
+       * @visibility secret
+       */
+      username?: string;
+      /**
+       * Password (or token as password) used to authenticate requests with Basic Auth.
+       * @visibility secret
+       */
+      password?: string;
+      /**
        * The base url for the Bitbucket Server API, for example https://<host>/rest/api/1.0
        * @visibility frontend
        */
@@ -111,6 +151,11 @@ export interface Config {
        * @visibility frontend
        */
       baseUrl?: string;
+      /**
+       * The gitiles base url.
+       * @visibility frontend
+       */
+      gitilesBaseUrl: string;
       /**
        * The base url for cloning repos.
        * @visibility frontend
@@ -154,7 +199,6 @@ export interface Config {
 
       /**
        * GitHub Apps configuration
-       * @visibility backend
        */
       apps?: Array<{
         /**
@@ -180,6 +224,14 @@ export interface Config {
          * @visibility secret
          */
         clientSecret: string;
+        /**
+         * List of installation owners allowed to be used by this GitHub app. The GitHub UI does not provide a way to list the installations.
+         * However you can list the installations with the GitHub API. You can find the list of installations here:
+         * https://api.github.com/app/installations
+         * The relevant documentation for this is here.
+         * https://docs.github.com/en/rest/reference/apps#list-installations-for-the-authenticated-app--code-samples
+         */
+        allowedInstallationOwners?: string[];
       }>;
     }>;
 
@@ -223,7 +275,6 @@ export interface Config {
     googleGcs?: {
       /**
        * Service account email used to authenticate requests.
-       * @visibility backend
        */
       clientEmail?: string;
       /**
@@ -255,7 +306,6 @@ export interface Config {
 
       /**
        * Account access key used to authenticate requests.
-       * @visibility backend
        */
       accessKeyId?: string;
       /**
@@ -266,15 +316,57 @@ export interface Config {
 
       /**
        * ARN of the role to be assumed
-       * @visibility backend
        */
       roleArn?: string;
 
       /**
        * External ID to use when assuming role
-       * @visibility backend
        */
       externalId?: string;
+    }>;
+
+    /** Integration configuration for Gitea */
+    gitea?: Array<{
+      /**
+       * The hostname of the given Gitea instance
+       * @visibility frontend
+       */
+      host: string;
+      /**
+       * The base url for the Gitea instance.
+       * @visibility frontend
+       */
+      baseUrl?: string;
+
+      /**
+       * The username to use for authenticated requests.
+       * @visibility secret
+       */
+      username?: string;
+      /**
+       * Gitea password used to authenticate requests. This can be either a password
+       * or a generated access token.
+       * @visibility secret
+       */
+      password?: string;
+    }>;
+    /** Integration configuration for Harness Code */
+    harness?: Array<{
+      /**
+       * The hostname of the given Harness Code instance
+       * @visibility frontend
+       */
+      host: string;
+      /**
+       * The apikey to use for authenticated requests.
+       * @visibility secret
+       */
+      apiKey?: string;
+      /**
+       * Harness Code token used to authenticate requests. This can be either a generated access token.
+       * @visibility secret
+       */
+      token?: string;
     }>;
   };
 }

@@ -17,7 +17,8 @@
 import React, { PropsWithChildren, useEffect } from 'react';
 import Helmet from 'react-helmet';
 
-import { Skeleton } from '@material-ui/lab';
+import Grid from '@material-ui/core/Grid';
+import Skeleton from '@material-ui/lab/Skeleton';
 import CodeIcon from '@material-ui/icons/Code';
 
 import {
@@ -35,6 +36,8 @@ import {
 import { RELATION_OWNED_BY, CompoundEntityRef } from '@backstage/catalog-model';
 import { Header, HeaderLabel } from '@backstage/core-components';
 import { useRouteRef, configApiRef, useApi } from '@backstage/core-plugin-api';
+
+import { capitalize } from 'lodash';
 
 import { rootRouteRef } from '../../../routes';
 
@@ -77,16 +80,13 @@ export const TechDocsReaderPageHeader = (
 
   useEffect(() => {
     if (!metadata) return;
-    setTitle(prevTitle => {
-      const { site_name } = metadata;
-      return prevTitle || site_name;
-    });
-    setSubtitle(prevSubtitle => {
+    setTitle(metadata.site_name);
+    setSubtitle(() => {
       let { site_description } = metadata;
       if (!site_description || site_description === 'None') {
-        site_description = 'Home';
+        site_description = '';
       }
-      return prevSubtitle || site_description;
+      return site_description;
     });
   }, [metadata, setTitle, setSubtitle]);
 
@@ -105,7 +105,7 @@ export const TechDocsReaderPageHeader = (
   const labels = (
     <>
       <HeaderLabel
-        label="Component"
+        label={capitalize(entityMetadata?.kind || 'entity')}
         value={
           <EntityRefLink
             color="inherit"
@@ -127,21 +127,25 @@ export const TechDocsReaderPageHeader = (
           }
         />
       )}
-      {lifecycle ? <HeaderLabel label="Lifecycle" value={lifecycle} /> : null}
+      {lifecycle ? (
+        <HeaderLabel label="Lifecycle" value={String(lifecycle)} />
+      ) : null}
       {locationMetadata &&
       locationMetadata.type !== 'dir' &&
       locationMetadata.type !== 'file' ? (
         <HeaderLabel
           label=""
           value={
-            <a
-              href={locationMetadata.target}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <CodeIcon style={{ marginTop: '-25px', fill: '#fff' }} />
-            </a>
+            <Grid container direction="column" alignItems="center">
+              <Grid style={{ padding: 0 }} item>
+                <CodeIcon style={{ marginTop: '-25px' }} />
+              </Grid>
+              <Grid style={{ padding: 0 }} item>
+                Source
+              </Grid>
+            </Grid>
           }
+          url={locationMetadata.target}
         />
       ) : null}
     </>
@@ -158,7 +162,7 @@ export const TechDocsReaderPageHeader = (
       type="Documentation"
       typeLink={docsRootLink}
       title={title || skeleton}
-      subtitle={subtitle || skeleton}
+      subtitle={subtitle === '' ? undefined : subtitle || skeleton}
     >
       <Helmet titleTemplate="%s">
         <title>{tabTitle}</title>

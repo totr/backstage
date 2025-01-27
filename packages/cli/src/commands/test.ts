@@ -78,10 +78,10 @@ export default async (_opts: OptionValues, cmd: Command) => {
     process.env.TZ = 'UTC';
   }
 
+  // This ensures that the process doesn't exit too early before stdout is flushed
   if (args.includes('--help')) {
     (process.stdout as any)._handle.setBlocking(true);
   }
 
-  // eslint-disable-next-line jest/no-jest-import
   await require('jest').run(args);
 };

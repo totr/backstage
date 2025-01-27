@@ -20,6 +20,9 @@
  * @packageDocumentation
  */
 
+export * from './cache';
 export * from './database';
 export * from './msw';
-export * from './util';
+export * from './filesystem';
+export * from './next';
+export { mockErrorHandler } from './util';

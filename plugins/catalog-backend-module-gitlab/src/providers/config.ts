@@ -14,29 +14,77 @@
  * limitations under the License.
  */
 
+import { readSchedulerServiceTaskScheduleDefinitionFromConfig } from '@backstage/backend-plugin-api';
 import { Config } from '@backstage/config';
-import { GitlabProviderConfig } from '../lib/types';
+import { GitlabProviderConfig } from '../lib';
 
 /**
  * Extracts the gitlab config from a config object
  *
  * @public
  *
+ * @param id - The provider key
  * @param config - The config object to extract from
  */
 function readGitlabConfig(id: string, config: Config): GitlabProviderConfig {
   const group = config.getOptionalString('group') ?? '';
   const host = config.getString('host');
-  const branch = config.getOptionalString('branch') ?? 'master';
+  const branch = config.getOptionalString('branch');
+  const fallbackBranch = config.getOptionalString('fallbackBranch') ?? 'master';
   const catalogFile =
     config.getOptionalString('entityFilename') ?? 'catalog-info.yaml';
+  const projectPattern = new RegExp(
+    config.getOptionalString('projectPattern') ?? /[\s\S]*/,
+  );
+  const userPattern = new RegExp(
+    config.getOptionalString('userPattern') ?? /[\s\S]*/,
+  );
+  const groupPattern = new RegExp(
+    config.getOptionalString('groupPattern') ?? /[\s\S]*/,
+  );
+  const orgEnabled: boolean = config.getOptionalBoolean('orgEnabled') ?? false;
+  const allowInherited: boolean =
+    config.getOptionalBoolean('allowInherited') ?? false;
+  const relations: string[] = config.getOptionalStringArray('relations') ?? [];
+
+  const skipForkedRepos: boolean =
+    config.getOptionalBoolean('skipForkedRepos') ?? false;
+
+  const includeArchivedRepos: boolean =
+    config.getOptionalBoolean('includeArchivedRepos') ?? false;
+  const excludeRepos: string[] =
+    config.getOptionalStringArray('excludeRepos') ?? [];
+
+  const schedule = config.has('schedule')
+    ? readSchedulerServiceTaskScheduleDefinitionFromConfig(
+        config.getConfig('schedule'),
+      )
+    : undefined;
+  const restrictUsersToGroup =
+    config.getOptionalBoolean('restrictUsersToGroup') ?? false;
+
+  const includeUsersWithoutSeat =
+    config.getOptionalBoolean('includeUsersWithoutSeat') ?? false;
 
   return {
     id,
     group,
     branch,
+    fallbackBranch,
     host,
     catalogFile,
+    projectPattern,
+    userPattern,
+    groupPattern,
+    schedule,
+    orgEnabled,
+    allowInherited,
+    relations,
+    skipForkedRepos,
+    includeArchivedRepos,
+    excludeRepos,
+    restrictUsersToGroup,
+    includeUsersWithoutSeat,
   };
 }
 

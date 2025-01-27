@@ -16,7 +16,8 @@
 
 import React from 'react';
 
-import { Button, makeStyles } from '@material-ui/core';
+import Button from '@material-ui/core/Button';
+import { makeStyles } from '@material-ui/core/styles';
 import ArrowBackIosIcon from '@material-ui/icons/ArrowBackIos';
 import ArrowForwardIosIcon from '@material-ui/icons/ArrowForwardIos';
 
@@ -43,7 +44,7 @@ export const SearchResultPager = () => {
   }
 
   return (
-    <nav arial-label="pagination navigation" className={classes.root}>
+    <nav aria-label="pagination navigation" className={classes.root}>
       <Button
         aria-label="previous page"
         disabled={!fetchPreviousPage}

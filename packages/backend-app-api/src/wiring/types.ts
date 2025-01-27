@@ -15,48 +15,31 @@
  */
 
 import {
-  AnyServiceFactory,
-  BackendRegistrable,
-  FactoryFunc,
+  BackendFeature,
+  ExtensionPoint,
   ServiceRef,
+  ServiceFactory,
 } from '@backstage/backend-plugin-api';
-import { defaultServiceFactories } from '../services/implementations';
-import { BackstageBackend } from './BackstageBackend';
 
 /**
  * @public
  */
 export interface Backend {
-  add(extension: BackendRegistrable): void;
+  add(feature: BackendFeature | Promise<{ default: BackendFeature }>): void;
   start(): Promise<void>;
-}
-
-export interface BackendRegisterInit {
-  id: string;
-  consumes: Set<ServiceRef<unknown>>;
-  provides: Set<ServiceRef<unknown>>;
-  deps: { [name: string]: ServiceRef<unknown> };
-  init: (deps: { [name: string]: unknown }) => Promise<void>;
+  stop(): Promise<void>;
 }
 
 /**
  * @public
  */
-export interface CreateBackendOptions {
-  apis: AnyServiceFactory[];
+export interface CreateSpecializedBackendOptions {
+  defaultServiceFactories: ServiceFactory[];
 }
-
-export type ServiceHolder = {
-  get<T>(api: ServiceRef<T>): FactoryFunc<T> | undefined;
-};
 
 /**
  * @public
  */
-export function createBackend(options?: CreateBackendOptions): Backend {
-  // TODO: merge with provided APIs
-  return new BackstageBackend([
-    ...defaultServiceFactories,
-    ...(options?.apis ?? []),
-  ]);
-}
+export type ServiceOrExtensionPoint<T = unknown> =
+  | ExtensionPoint<T>
+  | ServiceRef<T>;

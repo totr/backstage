@@ -14,13 +14,7 @@
  * limitations under the License.
  */
 
-import { JsonObject } from '@backstage/types';
-import { useApi, AnalyticsContext } from '@backstage/core-plugin-api';
-import { SearchResultSet } from '@backstage/plugin-search-common';
-import {
-  createVersionedContext,
-  createVersionedValueMap,
-} from '@backstage/version-bridge';
+import { isEqual } from 'lodash';
 import React, {
   PropsWithChildren,
   useCallback,
@@ -28,8 +22,22 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import useAsync, { AsyncState } from 'react-use/lib/useAsync';
-import usePrevious from 'react-use/lib/usePrevious';
+import useAsync, { AsyncState } from 'react-use/esm/useAsync';
+import usePrevious from 'react-use/esm/usePrevious';
+
+import {
+  createVersionedContext,
+  createVersionedValueMap,
+} from '@backstage/version-bridge';
+import { JsonObject } from '@backstage/types';
+import {
+  AnalyticsContext,
+  useApi,
+  configApiRef,
+  useAnalytics,
+} from '@backstage/core-plugin-api';
+import { SearchResultSet } from '@backstage/plugin-search-common';
+
 import { searchApiRef } from '../api';
 
 /**
@@ -41,6 +49,7 @@ export type SearchContextValue = {
   setTerm: React.Dispatch<React.SetStateAction<string>>;
   setTypes: React.Dispatch<React.SetStateAction<string[]>>;
   setFilters: React.Dispatch<React.SetStateAction<JsonObject>>;
+  setPageLimit: React.Dispatch<React.SetStateAction<number | undefined>>;
   setPageCursor: React.Dispatch<React.SetStateAction<string | undefined>>;
   fetchNextPage?: React.DispatchWithoutAction;
   fetchPreviousPage?: React.DispatchWithoutAction;
@@ -54,6 +63,7 @@ export type SearchContextState = {
   term: string;
   types: string[];
   filters: JsonObject;
+  pageLimit?: number;
   pageCursor?: string;
 };
 
@@ -93,57 +103,58 @@ export const useSearchContextCheck = () => {
  * The initial state of `SearchContextProvider`.
  *
  */
-const searchInitialState: SearchContextState = {
+const defaultInitialSearchState: SearchContextState = {
   term: '',
-  pageCursor: undefined,
-  filters: {},
   types: [],
+  filters: {},
+  pageLimit: undefined,
+  pageCursor: undefined,
 };
 
-/**
- * Props for {@link SearchContextProvider}
- *
- * @public
- */
-export type SearchContextProviderProps = PropsWithChildren<{
-  initialState?: SearchContextState;
-}>;
-
-/**
- * @public
- *
- * Search context provider which gives you access to shared state between search components
- */
-export const SearchContextProvider = (props: SearchContextProviderProps) => {
-  const { initialState = searchInitialState, children } = props;
+const useSearchContextValue = (
+  initialValue: SearchContextState = defaultInitialSearchState,
+) => {
   const searchApi = useApi(searchApiRef);
-  const [pageCursor, setPageCursor] = useState<string | undefined>(
-    initialState.pageCursor,
+  const analytics = useAnalytics();
+
+  const [term, setTerm] = useState<string>(initialValue.term);
+  const [types, setTypes] = useState<string[]>(initialValue.types);
+  const [filters, setFilters] = useState<JsonObject>(initialValue.filters);
+  const [pageLimit, setPageLimit] = useState<number | undefined>(
+    initialValue.pageLimit,
   );
-  const [filters, setFilters] = useState<JsonObject>(initialState.filters);
-  const [term, setTerm] = useState<string>(initialState.term);
-  const [types, setTypes] = useState<string[]>(initialState.types);
+  const [pageCursor, setPageCursor] = useState<string | undefined>(
+    initialValue.pageCursor,
+  );
 
   const prevTerm = usePrevious(term);
+  const prevFilters = usePrevious(filters);
 
-  const result = useAsync(
-    () =>
-      searchApi.query({
-        term,
-        filters,
-        pageCursor,
-        types,
-      }),
-    [term, filters, types, pageCursor],
-  );
+  const result = useAsync(async () => {
+    const resultSet = await searchApi.query({
+      term,
+      types,
+      filters,
+      pageLimit,
+      pageCursor,
+    });
+    if (term) {
+      analytics.captureEvent('search', term, {
+        value: result.value?.numberOfResults ?? undefined,
+      });
+    }
+    return resultSet;
+  }, [term, types, filters, pageLimit, pageCursor]);
 
   const hasNextPage =
     !result.loading && !result.error && result.value?.nextPageCursor;
   const hasPreviousPage =
     !result.loading && !result.error && result.value?.previousPageCursor;
+
   const fetchNextPage = useCallback(() => {
     setPageCursor(result.value?.nextPageCursor);
   }, [result.value?.nextPageCursor]);
+
   const fetchPreviousPage = useCallback(() => {
     setPageCursor(result.value?.previousPageCursor);
   }, [result.value?.previousPageCursor]);
@@ -156,25 +167,107 @@ export const SearchContextProvider = (props: SearchContextProviderProps) => {
     }
   }, [term, prevTerm, setPageCursor]);
 
+  useEffect(() => {
+    // Any time filters is reset, we want to start from page 0.
+    // Only reset the page if it has been modified by the user at least once, the initial state must not reset the page.
+    if (prevFilters !== undefined && !isEqual(filters, prevFilters)) {
+      setPageCursor(undefined);
+    }
+  }, [filters, prevFilters, setPageCursor]);
+
   const value: SearchContextValue = {
     result,
-    filters,
-    setFilters,
     term,
     setTerm,
     types,
     setTypes,
+    filters,
+    setFilters,
+    pageLimit,
+    setPageLimit,
     pageCursor,
     setPageCursor,
     fetchNextPage: hasNextPage ? fetchNextPage : undefined,
     fetchPreviousPage: hasPreviousPage ? fetchPreviousPage : undefined,
   };
 
-  const versionedValue = createVersionedValueMap({ 1: value });
+  return value;
+};
+
+export type LocalSearchContextProps = PropsWithChildren<{
+  initialState?: SearchContextState;
+}>;
+
+const LocalSearchContext = (props: SearchContextProviderProps) => {
+  const { initialState, children } = props;
+  const value = useSearchContextValue(initialState);
 
   return (
-    <AnalyticsContext attributes={{ searchTypes: types.sort().join(',') }}>
-      <SearchContext.Provider value={versionedValue} children={children} />
+    <AnalyticsContext
+      attributes={{ searchTypes: value.types.sort().join(',') }}
+    >
+      <SearchContext.Provider value={createVersionedValueMap({ 1: value })}>
+        {children}
+      </SearchContext.Provider>
     </AnalyticsContext>
+  );
+};
+
+/**
+ * Props for {@link SearchContextProvider}
+ *
+ * @public
+ */
+export type SearchContextProviderProps =
+  | PropsWithChildren<{
+      /**
+       * State initialized by a local context.
+       */
+      initialState?: SearchContextState;
+      /**
+       * Do not create an inheritance from the parent, as a new initial state must be defined in a local context.
+       */
+      inheritParentContextIfAvailable?: never;
+    }>
+  | PropsWithChildren<{
+      /**
+       * Does not accept initial state since it is already initialized by parent context.
+       */
+      initialState?: never;
+      /**
+       * If true, don't create a child context if there is a parent one already defined.
+       * @remarks Defaults to false.
+       */
+      inheritParentContextIfAvailable?: boolean;
+    }>;
+
+/**
+ * @public
+ * Search context provider which gives you access to shared state between search components
+ */
+export const SearchContextProvider = (props: SearchContextProviderProps) => {
+  const { initialState, inheritParentContextIfAvailable, children } = props;
+  const hasParentContext = useSearchContextCheck();
+
+  const configApi = useApi(configApiRef);
+
+  const propsInitialSearchState = initialState ?? {};
+
+  const configInitialSearchState = configApi.has('search.query.pageLimit')
+    ? { pageLimit: configApi.getNumber('search.query.pageLimit') }
+    : {};
+
+  const searchContextInitialState = {
+    ...defaultInitialSearchState,
+    ...propsInitialSearchState,
+    ...configInitialSearchState,
+  };
+
+  return hasParentContext && inheritParentContextIfAvailable ? (
+    <>{children}</>
+  ) : (
+    <LocalSearchContext initialState={searchContextInitialState}>
+      {children}
+    </LocalSearchContext>
   );
 };

@@ -51,6 +51,7 @@ describe('readMicrosoftGraphConfig', () => {
           authority: 'https://login.example.com/',
           userExpand: 'manager',
           userFilter: 'accountEnabled eq true',
+          userSelect: ['id', 'displayName', 'department'],
           groupExpand: 'member',
           groupSelect: ['id', 'displayName', 'description'],
           groupFilter: 'securityEnabled eq false',
@@ -68,6 +69,7 @@ describe('readMicrosoftGraphConfig', () => {
         authority: 'https://login.example.com/',
         userExpand: 'manager',
         userFilter: 'accountEnabled eq true',
+        userSelect: ['id', 'displayName', 'department'],
         groupExpand: 'member',
         groupSelect: ['id', 'displayName', 'description'],
         groupFilter: 'securityEnabled eq false',
@@ -162,14 +164,23 @@ describe('readProviderConfigs', () => {
               clientId: 'clientId',
               clientSecret: 'clientSecret',
               authority: 'https://login.example.com/',
+              queryMode: 'advanced',
               user: {
                 expand: 'manager',
                 filter: 'accountEnabled eq true',
+                select: ['id', 'displayName', 'department'],
               },
               group: {
                 expand: 'member',
                 filter: 'securityEnabled eq false',
                 select: ['id', 'displayName', 'description'],
+                includeSubGroups: true,
+              },
+              schedule: {
+                frequency: 'PT30M',
+                timeout: {
+                  minutes: 3,
+                },
               },
             },
           },
@@ -185,11 +196,20 @@ describe('readProviderConfigs', () => {
         clientId: 'clientId',
         clientSecret: 'clientSecret',
         authority: 'https://login.example.com/',
+        queryMode: 'advanced',
         userExpand: 'manager',
         userFilter: 'accountEnabled eq true',
+        userSelect: ['id', 'displayName', 'department'],
         groupExpand: 'member',
         groupSelect: ['id', 'displayName', 'description'],
         groupFilter: 'securityEnabled eq false',
+        groupIncludeSubGroups: true,
+        schedule: {
+          frequency: { minutes: 30 },
+          timeout: {
+            minutes: 3,
+          },
+        },
       },
     ];
     expect(actual).toEqual(expected);

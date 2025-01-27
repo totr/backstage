@@ -13,20 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 import { CachedEntityLoader } from './CachedEntityLoader';
-import { CatalogClient } from '@backstage/catalog-client';
-import { CacheClient } from '@backstage/backend-common';
 import { CompoundEntityRef } from '@backstage/catalog-model';
+import { mockServices } from '@backstage/backend-test-utils';
+import { catalogServiceMock } from '@backstage/plugin-catalog-node/testUtils';
 
 describe('CachedEntityLoader', () => {
-  const catalog: jest.Mocked<CatalogClient> = {
-    getEntityByRef: jest.fn(),
-  } as any;
-
-  const cache: jest.Mocked<CacheClient> = {
-    get: jest.fn(),
-    set: jest.fn(),
-  } as any;
+  const cache = mockServices.cache.mock();
 
   const entityName: CompoundEntityRef = {
     kind: 'component',
@@ -45,20 +39,19 @@ describe('CachedEntityLoader', () => {
 
   const token = 'test-token';
 
-  const loader = new CachedEntityLoader({ catalog, cache });
-
   afterEach(() => {
     jest.resetAllMocks();
   });
 
   it('writes entities to cache', async () => {
     cache.get.mockResolvedValue(undefined);
-    catalog.getEntityByRef.mockResolvedValue(entity);
+    const catalog = catalogServiceMock({ entities: [entity] });
 
+    const loader = new CachedEntityLoader({ catalog, cache });
     const result = await loader.load(entityName, token);
 
     expect(result).toEqual(entity);
-    expect(cache.set).toBeCalledWith(
+    expect(cache.set).toHaveBeenCalledWith(
       'catalog:component:default/test:test-token',
       entity,
       { ttl: 5000 },
@@ -66,34 +59,43 @@ describe('CachedEntityLoader', () => {
   });
 
   it('returns entities from cache', async () => {
+    const catalog = catalogServiceMock();
+    jest.spyOn(catalog, 'getEntityByRef');
     cache.get.mockResolvedValue(entity);
 
+    const loader = new CachedEntityLoader({ catalog, cache });
     const result = await loader.load(entityName, token);
 
     expect(result).toEqual(entity);
-    expect(catalog.getEntityByRef).not.toBeCalled();
+    expect(catalog.getEntityByRef).not.toHaveBeenCalled();
   });
 
   it('does not cache missing entites', async () => {
+    const catalog = catalogServiceMock({ entities: [] });
     cache.get.mockResolvedValue(undefined);
-    catalog.getEntityByRef.mockResolvedValue(undefined);
 
+    const loader = new CachedEntityLoader({ catalog, cache });
     const result = await loader.load(entityName, token);
 
     expect(result).toBeUndefined();
-    expect(cache.set).not.toBeCalled();
+    expect(cache.set).not.toHaveBeenCalled();
   });
 
   it('uses entity ref as cache key for anonymous users', async () => {
+    const catalog = catalogServiceMock({ entities: [entity] });
     cache.get.mockResolvedValue(undefined);
-    catalog.getEntityByRef.mockResolvedValue(entity);
 
+    const loader = new CachedEntityLoader({ catalog, cache });
     const result = await loader.load(entityName, undefined);
 
     expect(result).toEqual(entity);
-    expect(cache.set).toBeCalledWith('catalog:component:default/test', entity, {
-      ttl: 5000,
-    });
+    expect(cache.set).toHaveBeenCalledWith(
+      'catalog:component:default/test',
+      entity,
+      {
+        ttl: 5000,
+      },
+    );
   });
 
   it('calls the catalog if the cache read takes too long', async () => {
@@ -103,8 +105,9 @@ describe('CachedEntityLoader', () => {
           setTimeout(() => resolve(undefined), 10000);
         }),
     );
-    catalog.getEntityByRef.mockResolvedValue(entity);
+    const catalog = catalogServiceMock({ entities: [entity] });
 
+    const loader = new CachedEntityLoader({ catalog, cache });
     const result = await loader.load(entityName, token);
 
     expect(result).toEqual(entity);

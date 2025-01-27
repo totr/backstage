@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { ResourcePermission } from '.';
-import { Permission } from './permission';
+import { JsonPrimitive } from '@backstage/types';
+import { Permission, ResourcePermission } from './permission';
 
 /**
  * A request with a UUID identifier, so that batched responses can be matched up with the original
@@ -101,11 +101,11 @@ export type PolicyDecision =
  */
 export type PermissionCondition<
   TResourceType extends string = string,
-  TParams extends unknown[] = unknown[],
+  TParams extends PermissionRuleParams = PermissionRuleParams,
 > = {
   resourceType: TResourceType;
   rule: string;
-  params: TParams;
+  params?: TParams;
 };
 
 /**
@@ -147,6 +147,22 @@ export type PermissionCriteria<TQuery> =
   | AnyOfCriteria<TQuery>
   | NotCriteria<TQuery>
   | TQuery;
+
+/**
+ * A parameter to a permission rule.
+ *
+ * @public
+ */
+export type PermissionRuleParam = undefined | JsonPrimitive | JsonPrimitive[];
+
+/**
+ * Types that can be used as parameters to permission rules.
+ *
+ * @public
+ */
+export type PermissionRuleParams =
+  | undefined
+  | Record<string, PermissionRuleParam>;
 
 /**
  * An individual request sent to the permission backend.
@@ -228,7 +244,7 @@ export interface PermissionEvaluator {
    */
   authorize(
     requests: AuthorizePermissionRequest[],
-    options?: EvaluatorRequestOptions,
+    options?: EvaluatorRequestOptions & { _ignored?: never }, // Since the options are empty we add this placeholder to reject all options
   ): Promise<AuthorizePermissionResponse[]>;
 
   /**
@@ -241,15 +257,20 @@ export interface PermissionEvaluator {
    */
   authorizeConditional(
     requests: QueryPermissionRequest[],
-    options?: EvaluatorRequestOptions,
+    options?: EvaluatorRequestOptions & { _ignored?: never }, // Since the options are empty we add this placeholder to reject all options
   ): Promise<QueryPermissionResponse[]>;
 }
 
+// Note(Rugvip): I kept the below type around in case we want to add new options
+// in the future, for example a signal. It also helps out enabling API
+// constraints, as without this we can't have the permissions service implement
+// the evaluator interface due to the mismatch in parameter count.
+
 /**
  * Options for {@link PermissionEvaluator} requests.
- * The Backstage identity token should be defined if available.
+ *
+ * This is currently empty, as there are no longer any common options for the permission evaluator.
+ *
  * @public
  */
-export type EvaluatorRequestOptions = {
-  token?: string;
-};
+export interface EvaluatorRequestOptions {}

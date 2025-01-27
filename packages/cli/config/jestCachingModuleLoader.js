@@ -14,54 +14,14 @@
  * limitations under the License.
  */
 
-const fs = require('fs');
 const { default: JestRuntime } = require('jest-runtime');
 
-const fileTransformCache = new Map();
 const scriptTransformCache = new Map();
 
-let runtimeGeneration = 0;
-
 module.exports = class CachingJestRuntime extends JestRuntime {
-  // Each Jest run creates a new runtime, including when rerunning tests in
-  // watch mode. This keeps track of whether we've switched runtime instance.
-  __runtimeGeneration = runtimeGeneration++;
-
-  transformFile(filename, options) {
-    const entry = fileTransformCache.get(filename);
-    if (entry) {
-      // Only check modification time if it's from a different runtime generation
-      if (entry.generation === this.__runtimeGeneration) {
-        return entry.code;
-      }
-
-      // Keep track of the modification time of files so that we can properly
-      // reprocess them in watch mode.
-      const { mtimeMs } = fs.statSync(filename);
-      if (mtimeMs > entry.mtimeMs) {
-        const code = super.transformFile(filename, options);
-        fileTransformCache.set(filename, {
-          code,
-          mtimeMs,
-          generation: this.__runtimeGeneration,
-        });
-        return code;
-      }
-
-      fileTransformCache.set(filename, {
-        ...entry,
-        generation: this.__runtimeGeneration,
-      });
-      return entry.code;
-    }
-
-    const code = super.transformFile(filename, options);
-    fileTransformCache.set(filename, {
-      code,
-      mtimeMs: fs.statSync(filename).mtimeMs,
-      generation: this.__runtimeGeneration,
-    });
-    return code;
+  constructor(config, ...restAgs) {
+    super(config, ...restAgs);
+    this.allowLoadAsEsm = config.extensionsToTreatAsEsm.includes('.mts');
   }
 
   // This may or may not be a good idea. Theoretically I don't know why this would impact
@@ -77,5 +37,14 @@ module.exports = class CachingJestRuntime extends JestRuntime {
       scriptTransformCache.set(scriptSource, script);
     }
     return script;
+  }
+
+  // Unfortunately we need to use this unstable API to make sure that .js files
+  // are only loaded as modules where ESM is supported, i.e. Node.js packages.
+  unstable_shouldLoadAsEsm(path, ...restArgs) {
+    if (!this.allowLoadAsEsm) {
+      return false;
+    }
+    return super.unstable_shouldLoadAsEsm(path, ...restArgs);
   }
 };

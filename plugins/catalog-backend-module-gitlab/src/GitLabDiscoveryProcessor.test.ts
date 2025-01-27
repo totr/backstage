@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-import { getVoidLogger } from '@backstage/backend-common';
+import {
+  mockServices,
+  registerMswTestHooks,
+} from '@backstage/backend-test-utils';
 import { ConfigReader } from '@backstage/config';
-import { LocationSpec } from '@backstage/plugin-catalog-backend';
+import { LocationSpec } from '@backstage/plugin-catalog-node';
 import { rest, RestRequest } from 'msw';
 import { setupServer } from 'msw/node';
 import { GitLabDiscoveryProcessor, parseUrl } from './GitLabDiscoveryProcessor';
@@ -55,6 +58,7 @@ function setupFakeServer(
   listProjectsCallback: (request: {
     page: number;
     include_subgroups: boolean;
+    archived: boolean;
   }) => {
     data: GitLabProject[];
     nextPage?: number;
@@ -73,20 +77,24 @@ function setupFakeServer(
       }
       const page = req.url.searchParams.get('page');
       const include_subgroups = req.url.searchParams.get('include_subgroups');
+      const archived = req.url.searchParams.get('archived');
       const response = listProjectsCallback({
         page: parseInt(page!, 10),
         include_subgroups: include_subgroups === 'true',
+        archived: archived === 'true',
       });
 
       // Filter the fake results based on the `last_activity_after` parameter
       const last_activity_after = req.url.searchParams.get(
         'last_activity_after',
       );
-      const filteredData = response.data.filter(
-        v =>
-          !last_activity_after ||
-          Date.parse(v.last_activity_at) >= Date.parse(last_activity_after),
-      );
+      const filteredData = response.data
+        .filter(
+          v =>
+            !last_activity_after ||
+            Date.parse(v.last_activity_at) >= Date.parse(last_activity_after),
+        )
+        .filter(v => archived || !v.archived);
 
       return res(
         ctx.set('x-next-page', response.nextPage?.toString() ?? ''),
@@ -142,21 +150,21 @@ function getProcessor({
   return GitLabDiscoveryProcessor.fromConfig(
     new ConfigReader(config || getConfig()),
     {
-      logger: getVoidLogger(),
+      logger: mockServices.logger.mock(),
       ...options,
     },
   );
 }
 
 describe('GitlabDiscoveryProcessor', () => {
+  registerMswTestHooks(server);
+
   beforeAll(() => {
-    server.listen();
-    jest.useFakeTimers('modern');
+    jest.useFakeTimers();
     jest.setSystemTime(new Date(SERVER_TIME));
   });
-  afterEach(() => server.resetHandlers());
+
   afterAll(() => {
-    server.close();
     jest.useRealTimers();
   });
 
@@ -232,14 +240,6 @@ describe('GitlabDiscoveryProcessor', () => {
                   path_with_namespace: '3',
                 },
                 {
-                  id: 4,
-                  archived: true, // ARCHIVED
-                  default_branch: 'master',
-                  last_activity_at: '2021-08-05T11:03:05.774Z',
-                  web_url: 'https://gitlab.fake/4',
-                  path_with_namespace: '4',
-                },
-                {
                   id: 5,
                   archived: false,
                   default_branch: undefined, // MISSING DEFAULT BRANCH
@@ -249,6 +249,7 @@ describe('GitlabDiscoveryProcessor', () => {
                 },
               ],
             };
+
           default:
             throw new Error('Invalid request');
         }

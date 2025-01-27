@@ -34,7 +34,7 @@ describe('SearchResultPager', () => {
   it('renders pager buttons', async () => {
     const fetchNextPage = jest.fn();
     const fetchPreviousPage = jest.fn();
-    (useSearch as jest.Mock).mockReturnValueOnce({
+    (useSearch as jest.Mock).mockReturnValue({
       result: { loading: false, value: [] },
       fetchNextPage,
       fetchPreviousPage,
@@ -46,13 +46,13 @@ describe('SearchResultPager', () => {
       expect(getByLabelText('previous page')).toBeInTheDocument();
     });
     await userEvent.click(getByLabelText('previous page'));
-    expect(fetchPreviousPage).toBeCalled();
+    expect(fetchPreviousPage).toHaveBeenCalled();
 
     await waitFor(() => {
       expect(getByLabelText('next page')).toBeInTheDocument();
     });
     await userEvent.click(getByLabelText('next page'));
 
-    expect(fetchNextPage).toBeCalled();
+    expect(fetchNextPage).toHaveBeenCalled();
   });
 });

@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { PluginDatabaseManager } from '@backstage/backend-common';
-import { SearchEngine } from '@backstage/plugin-search-common';
+
+import { SearchEngine } from '@backstage/plugin-search-backend-node';
 import {
   SearchQuery,
   IndexableResultSet,
@@ -28,6 +28,7 @@ import {
 } from '../database';
 import { v4 as uuid } from 'uuid';
 import { Config } from '@backstage/config';
+import { DatabaseService, LoggerService } from '@backstage/backend-plugin-api';
 
 /**
  * Search query that the Postgres search engine understands.
@@ -60,7 +61,8 @@ export type PgSearchQueryTranslator = (
  * @public
  */
 export type PgSearchOptions = {
-  database: PluginDatabaseManager;
+  database: DatabaseService;
+  logger?: LoggerService;
 };
 
 /**
@@ -79,13 +81,20 @@ export type PgSearchHighlightOptions = {
   postTag: string;
 };
 
+/** @public */
 export class PgSearchEngine implements SearchEngine {
+  private readonly logger?: LoggerService;
   private readonly highlightOptions: PgSearchHighlightOptions;
+  private readonly indexerBatchSize: number;
 
   /**
    * @deprecated This will be marked as private in a future release, please us fromConfig instead
    */
-  constructor(private readonly databaseStore: DatabaseStore, config: Config) {
+  constructor(
+    private readonly databaseStore: DatabaseStore,
+    config: Config,
+    logger?: LoggerService,
+  ) {
     const uuidTag = uuid();
     const highlightConfig = config.getOptionalConfig(
       'search.pg.highlightOptions',
@@ -105,29 +114,35 @@ export class PgSearchEngine implements SearchEngine {
         highlightConfig?.getOptionalString('fragmentDelimiter') ?? ' ... ',
     };
     this.highlightOptions = highlightOptions;
+    this.indexerBatchSize =
+      config.getOptionalNumber('search.pg.indexerBatchSize') ?? 1000;
+    this.logger = logger;
   }
 
   /**
-   * @deprecated This will be removed in a future release, please us fromConfig instead
+   * @deprecated This will be removed in a future release, please use fromConfig instead
    */
   static async from(options: {
-    database: PluginDatabaseManager;
+    database: DatabaseService;
     config: Config;
+    logger?: LoggerService;
   }): Promise<PgSearchEngine> {
     return new PgSearchEngine(
-      await DatabaseDocumentStore.create(await options.database.getClient()),
+      await DatabaseDocumentStore.create(options.database),
       options.config,
+      options.logger,
     );
   }
 
   static async fromConfig(config: Config, options: PgSearchOptions) {
     return new PgSearchEngine(
-      await DatabaseDocumentStore.create(await options.database.getClient()),
+      await DatabaseDocumentStore.create(options.database),
       config,
+      options.logger,
     );
   }
 
-  static async supported(database: PluginDatabaseManager): Promise<boolean> {
+  static async supported(database: DatabaseService): Promise<boolean> {
     return await DatabaseDocumentStore.supported(await database.getClient());
   }
 
@@ -135,7 +150,7 @@ export class PgSearchEngine implements SearchEngine {
     query: SearchQuery,
     options: PgSearchQueryTranslatorOptions,
   ): ConcretePgSearchQuery {
-    const pageSize = 25;
+    const pageSize = query.pageLimit || 25;
     const { page } = decodePageCursor(query.pageCursor);
     const offset = page * pageSize;
     // We request more result to know whether there is another page
@@ -165,9 +180,10 @@ export class PgSearchEngine implements SearchEngine {
 
   async getIndexer(type: string) {
     return new PgSearchEngineIndexer({
-      batchSize: 1000,
+      batchSize: this.indexerBatchSize,
       type,
       databaseStore: this.databaseStore,
+      logger: this.logger?.child({ documentType: type }),
     });
   }
 

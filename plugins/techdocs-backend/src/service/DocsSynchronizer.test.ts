@@ -14,10 +14,7 @@
  * limitations under the License.
  */
 
-import {
-  getVoidLogger,
-  PluginEndpointDiscovery,
-} from '@backstage/backend-common';
+import { loggerToWinstonLogger } from '@backstage/backend-common';
 import { ConfigReader } from '@backstage/config';
 import { ScmIntegrations } from '@backstage/integration';
 import {
@@ -30,25 +27,22 @@ import * as winston from 'winston';
 import { TechDocsCache } from '../cache';
 import { DocsBuilder, shouldCheckForUpdate } from '../DocsBuilder';
 import { DocsSynchronizer, DocsSynchronizerSyncOpts } from './DocsSynchronizer';
+import {
+  mockServices,
+  registerMswTestHooks,
+} from '@backstage/backend-test-utils';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 
 jest.mock('../DocsBuilder');
-
-jest.mock('node-fetch', () => ({
-  __esModule: true,
-  default: async () => {
-    return {
-      json: async () => {
-        return {
-          build_timestamp: 123,
-        };
-      },
-    };
-  },
-}));
+jest.useFakeTimers();
 
 const MockedDocsBuilder = DocsBuilder as jest.MockedClass<typeof DocsBuilder>;
 
 describe('DocsSynchronizer', () => {
+  const worker = setupServer();
+  registerMswTestHooks(worker);
+
   const preparers: jest.Mocked<PreparerBuilder> = {
     register: jest.fn(),
     get: jest.fn(),
@@ -64,10 +58,7 @@ describe('DocsSynchronizer', () => {
     hasDocsBeenGenerated: jest.fn(),
     publish: jest.fn(),
   };
-  const discovery: jest.Mocked<PluginEndpointDiscovery> = {
-    getBaseUrl: jest.fn(),
-    getExternalBaseUrl: jest.fn(),
-  };
+  const discovery = mockServices.discovery.mock();
   const cache: jest.Mocked<TechDocsCache> = {
     get: jest.fn(),
     set: jest.fn(),
@@ -96,11 +87,18 @@ describe('DocsSynchronizer', () => {
     docsSynchronizer = new DocsSynchronizer({
       publisher,
       config: new ConfigReader({}),
-      logger: getVoidLogger(),
+      logger: loggerToWinstonLogger(mockServices.logger.mock()),
       buildLogTransport: mockBuildLogTransport,
       scmIntegrations: ScmIntegrations.fromConfig(new ConfigReader({})),
       cache,
     });
+
+    worker.use(
+      http.get(
+        'http://backstage.local/api/techdocs/static/docs/default/component/test/techdocs_metadata.json',
+        () => HttpResponse.json({ build_timestamp: 123 }),
+      ),
+    );
   });
 
   afterEach(() => {
@@ -130,6 +128,8 @@ describe('DocsSynchronizer', () => {
 
         const logger = MockedDocsBuilder.mock.calls[0][0].logger;
 
+        jest.advanceTimersByTime(10001);
+
         logger.info('Some more log');
 
         return true;
@@ -144,19 +144,27 @@ describe('DocsSynchronizer', () => {
         generators,
       });
 
-      expect(mockResponseHandler.log).toBeCalledTimes(3);
-      expect(mockResponseHandler.log).toBeCalledWith('Some log');
-      expect(mockResponseHandler.log).toBeCalledWith('Another log');
-      expect(mockResponseHandler.log).toBeCalledWith(
+      expect(mockResponseHandler.log).toHaveBeenCalledTimes(4);
+      expect(mockResponseHandler.log).toHaveBeenCalledWith('Some log');
+      expect(mockResponseHandler.log).toHaveBeenCalledWith('Another log');
+      expect(mockResponseHandler.log).toHaveBeenCalledWith(
         expect.stringMatching(/info.*Some more log/),
       );
 
-      expect(mockResponseHandler.finish).toBeCalledWith({ updated: true });
+      expect(mockResponseHandler.log).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /info.*The docs building process is taking a little bit longer to process this entity. Please bear with us/,
+        ),
+      );
 
-      expect(mockResponseHandler.error).toBeCalledTimes(0);
+      expect(mockResponseHandler.finish).toHaveBeenCalledWith({
+        updated: true,
+      });
 
-      expect(shouldCheckForUpdate).toBeCalledTimes(1);
-      expect(DocsBuilder.prototype.build).toBeCalledTimes(1);
+      expect(mockResponseHandler.error).toHaveBeenCalledTimes(0);
+
+      expect(shouldCheckForUpdate).toHaveBeenCalledTimes(1);
+      expect(DocsBuilder.prototype.build).toHaveBeenCalledTimes(1);
     });
 
     it('should limit concurrent updates', async () => {
@@ -210,13 +218,15 @@ describe('DocsSynchronizer', () => {
         generators,
       });
 
-      expect(mockResponseHandler.finish).toBeCalledWith({ updated: false });
+      expect(mockResponseHandler.finish).toHaveBeenCalledWith({
+        updated: false,
+      });
 
-      expect(mockResponseHandler.log).toBeCalledTimes(0);
-      expect(mockResponseHandler.error).toBeCalledTimes(0);
+      expect(mockResponseHandler.log).toHaveBeenCalledTimes(0);
+      expect(mockResponseHandler.error).toHaveBeenCalledTimes(0);
 
-      expect(shouldCheckForUpdate).toBeCalledTimes(1);
-      expect(DocsBuilder.prototype.build).toBeCalledTimes(0);
+      expect(shouldCheckForUpdate).toHaveBeenCalledTimes(1);
+      expect(DocsBuilder.prototype.build).toHaveBeenCalledTimes(0);
     });
 
     it('should forward build errors', async () => {
@@ -242,15 +252,15 @@ describe('DocsSynchronizer', () => {
         generators,
       });
 
-      expect(mockResponseHandler.log).toBeCalledTimes(1);
-      expect(mockResponseHandler.log).toBeCalledWith(
+      expect(mockResponseHandler.log).toHaveBeenCalledTimes(1);
+      expect(mockResponseHandler.log).toHaveBeenCalledWith(
         expect.stringMatching(
-          /error.*: Failed to build the docs page: Some random error/,
+          /error.*: Failed to build the docs page for entity component:default\/test: Some random error/,
         ),
       );
-      expect(mockResponseHandler.finish).toBeCalledTimes(0);
-      expect(mockResponseHandler.error).toBeCalledTimes(1);
-      expect(mockResponseHandler.error).toBeCalledWith(error);
+      expect(mockResponseHandler.finish).toHaveBeenCalledTimes(0);
+      expect(mockResponseHandler.error).toHaveBeenCalledTimes(1);
+      expect(mockResponseHandler.error).toHaveBeenCalledWith(error);
     });
   });
 
@@ -275,8 +285,10 @@ describe('DocsSynchronizer', () => {
         entity,
       });
 
-      expect(mockResponseHandler.finish).toBeCalledWith({ updated: false });
-      expect(shouldCheckForUpdate).toBeCalledTimes(1);
+      expect(mockResponseHandler.finish).toHaveBeenCalledWith({
+        updated: false,
+      });
+      expect(shouldCheckForUpdate).toHaveBeenCalledTimes(1);
     });
 
     it('should do nothing if source/cached metadata matches', async () => {
@@ -292,7 +304,9 @@ describe('DocsSynchronizer', () => {
         entity,
       });
 
-      expect(mockResponseHandler.finish).toBeCalledWith({ updated: false });
+      expect(mockResponseHandler.finish).toHaveBeenCalledWith({
+        updated: false,
+      });
     });
 
     it('should invalidate expected files when source/cached metadata differ', async () => {
@@ -309,7 +323,9 @@ describe('DocsSynchronizer', () => {
         entity,
       });
 
-      expect(mockResponseHandler.finish).toBeCalledWith({ updated: true });
+      expect(mockResponseHandler.finish).toHaveBeenCalledWith({
+        updated: true,
+      });
       expect(cache.invalidateMultiple).toHaveBeenCalledWith([
         'default/component/test/index.html',
       ]);
@@ -327,7 +343,7 @@ describe('DocsSynchronizer', () => {
         config: new ConfigReader({
           techdocs: { legacyUseCaseSensitiveTripletPaths: true },
         }),
-        logger: getVoidLogger(),
+        logger: loggerToWinstonLogger(mockServices.logger.mock()),
         buildLogTransport: new winston.transports.Stream({
           stream: new PassThrough(),
         }),
@@ -342,7 +358,9 @@ describe('DocsSynchronizer', () => {
         entity,
       });
 
-      expect(mockResponseHandler.finish).toBeCalledWith({ updated: true });
+      expect(mockResponseHandler.finish).toHaveBeenCalledWith({
+        updated: true,
+      });
       expect(cache.invalidateMultiple).toHaveBeenCalledWith([
         'default/Component/test/index.html',
       ]);
@@ -361,7 +379,9 @@ describe('DocsSynchronizer', () => {
         entity,
       });
 
-      expect(mockResponseHandler.finish).toBeCalledWith({ updated: false });
+      expect(mockResponseHandler.finish).toHaveBeenCalledWith({
+        updated: false,
+      });
     });
 
     it("adds the build log transport to the logger's list of transports", async () => {

@@ -16,9 +16,12 @@
 
 import React, { useState } from 'react';
 
-import { Theme, makeStyles } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core/styles';
+import { Theme } from '@material-ui/core/styles/createTheme';
 
-import { Box, Tooltip, IconButton } from '@material-ui/core';
+import Box from '@material-ui/core/Box';
+import Tooltip from '@material-ui/core/Tooltip';
+import IconButton from '@material-ui/core/IconButton';
 import LightIcon from '@material-ui/icons/Brightness7';
 import DarkIcon from '@material-ui/icons/Brightness4';
 
@@ -55,7 +58,7 @@ export const TechDocsThemeToggle = () => {
   const appThemeApi = useApi(appThemeApiRef);
   const classes = useStyles();
   const [theme, setTheme] = useState<Themes>(
-    (appThemeApi.getActiveThemeId() as Themes) || Themes.LIGHT,
+    appThemeApi.getActiveThemeId() === Themes.DARK ? Themes.DARK : Themes.LIGHT,
   );
 
   const themes = {

@@ -12,10 +12,7 @@ Options:
   -h, --help
 
 Commands:
-  create [options]
-  create-plugin [options]
-  plugin:diff [options]
-  test
+  new [options]
   config:docs [options]
   config:print [options]
   config:check [options]
@@ -24,9 +21,8 @@ Commands:
   package [command]
   migrate [command]
   versions:bump [options]
-  versions:check [options]
-  clean
-  build-workspace <workspace-dir> [packages...]
+  versions:migrate [options]
+  build-workspace [options] <workspace-dir> [packages...]
   create-github-app <github-org>
   info
   help [command]
@@ -38,15 +34,7 @@ Commands:
 Usage: backstage-cli build-workspace [options] <workspace-dir> [packages...]
 
 Options:
-  -h, --help
-```
-
-### `backstage-cli clean`
-
-```
-Usage: backstage-cli clean [options]
-
-Options:
+  --alwaysPack
   -h, --help
 ```
 
@@ -60,6 +48,7 @@ Options:
   --lax
   --frontend
   --deprecated
+  --strict
   --config <path>
   -h, --help
 ```
@@ -97,20 +86,8 @@ Usage: backstage-cli config:schema [options]
 Options:
   --package <name>
   --format <format>
-  -h, --help
-```
-
-### `backstage-cli create`
-
-```
-Usage: backstage-cli create [options]
-
-Options:
-  --select <name>
-  --option <name>=<value>
-  --scope <scope>
-  --npm-registry <URL>
-  --no-private
+  --merge
+  --no-merge
   -h, --help
 ```
 
@@ -120,19 +97,6 @@ Options:
 Usage: backstage-cli create-github-app [options] <github-org>
 
 Options:
-  -h, --help
-```
-
-### `backstage-cli create-plugin`
-
-```
-Usage: backstage-cli create-plugin [options]
-
-Options:
-  --backend
-  --scope <scope>
-  --npm-registry <URL>
-  --no-private
   -h, --help
 ```
 
@@ -156,8 +120,19 @@ Options:
 Commands:
   package-roles
   package-scripts
+  package-exports
   package-lint-configs
+  react-router-deps
   help [command]
+```
+
+### `backstage-cli migrate package-exports`
+
+```
+Usage: backstage-cli migrate package-exports [options]
+
+Options:
+  -h, --help
 ```
 
 ### `backstage-cli migrate package-lint-configs`
@@ -184,6 +159,31 @@ Options:
 Usage: backstage-cli migrate package-scripts [options]
 
 Options:
+  -h, --help
+```
+
+### `backstage-cli migrate react-router-deps`
+
+```
+Usage: backstage-cli migrate react-router-deps [options]
+
+Options:
+  -h, --help
+```
+
+### `backstage-cli new`
+
+```
+Usage: backstage-cli new [options]
+
+Options:
+  --select <name>
+  --option <name>=<value>
+  --scope <scope>
+  --npm-registry <URL>
+  --baseVersion <version>
+  --license <license>
+  --no-private
   -h, --help
 ```
 
@@ -214,7 +214,6 @@ Usage: backstage-cli package build [options]
 Options:
   --role <name>
   --minify
-  --experimental-type-build
   --skip-build-dependencies
   --stats
   --config <path>
@@ -237,7 +236,9 @@ Usage: backstage-cli package lint [options] [directories...]
 
 Options:
   --format <format>
+  --output-file <path>
   --fix
+  --max-warnings <number>
   -h, --help
 ```
 
@@ -268,8 +269,10 @@ Options:
   --config <path>
   --role <name>
   --check
-  --inspect
-  --inspect-brk
+  --inspect [host]
+  --inspect-brk [host]
+  --require <path>
+  --link <path>
   -h, --help
 ```
 
@@ -280,7 +283,7 @@ Usage: backstage-cli [--config=<pathToConfigFile>] [TestPathPattern]
 
 Options:
   -h, --help
-  -v, --version
+  --version
   --all
   --automock
   -b, --bail
@@ -293,7 +296,6 @@ Options:
   --clearMocks
   --collectCoverage
   --collectCoverageFrom
-  --collectCoverageOnlyFrom
   --color
   --colors
   -c, --config
@@ -316,6 +318,7 @@ Options:
   --globalTeardown
   --globals
   --haste
+  --ignoreProjects
   --init
   --injectGlobals
   --json
@@ -334,11 +337,13 @@ Options:
   --notifyMode
   -o, --onlyChanged
   -f, --onlyFailures
+  --openHandlesTimeout
   --outputFile
   --passWithNoTests
   --preset
   --prettierPath
   --projects
+  --randomize
   --reporters
   --resetMocks
   --resetModules
@@ -349,10 +354,13 @@ Options:
   -i, --runInBand
   --runTestsByPath
   --runner
+  --seed
   --selectProjects
   --setupFiles
   --setupFilesAfterEnv
+  --shard
   --showConfig
+  --showSeed
   --silent
   --skipFilter
   --snapshotSerializers
@@ -369,8 +377,6 @@ Options:
   --testRunner
   --testSequencer
   --testTimeout
-  --testURL
-  --timers
   --transform
   --transformIgnorePatterns
   --unmockedModulePathPatterns
@@ -381,17 +387,7 @@ Options:
   --watchAll
   --watchPathIgnorePatterns
   --watchman
-```
-
-### `backstage-cli plugin:diff`
-
-```
-Usage: backstage-cli plugin:diff [options]
-
-Options:
-  --check
-  --yes
-  -h, --help
+  --workerThreads
 ```
 
 ### `backstage-cli repo`
@@ -405,6 +401,10 @@ Options:
 Commands:
   build [options]
   lint [options]
+  fix [options]
+  clean
+  list-deprecations [options]
+  test [options]
   help [command]
 ```
 
@@ -416,6 +416,27 @@ Usage: backstage-cli repo build [options]
 Options:
   --all
   --since <ref>
+  --minify
+  -h, --help
+```
+
+### `backstage-cli repo clean`
+
+```
+Usage: backstage-cli repo clean [options]
+
+Options:
+  -h, --help
+```
+
+### `backstage-cli repo fix`
+
+```
+Usage: backstage-cli repo fix [options]
+
+Options:
+  --publish
+  --check
   -h, --help
 ```
 
@@ -426,119 +447,35 @@ Usage: backstage-cli repo lint [options]
 
 Options:
   --format <format>
+  --output-file <path>
   --since <ref>
+  --successCache
+  --successCacheDir <path>
   --fix
   -h, --help
 ```
 
-### `backstage-cli test`
+### `backstage-cli repo list-deprecations`
 
 ```
-Usage: backstage-cli [--config=<pathToConfigFile>] [TestPathPattern]
+Usage: backstage-cli repo list-deprecations [options]
 
 Options:
-  -h, --help
-  -v, --version
-  --all
-  --automock
-  -b, --bail
-  --cache
-  --cacheDirectory
-  --changedFilesWithAncestor
-  --changedSince
-  --ci
-  --clearCache
-  --clearMocks
-  --collectCoverage
-  --collectCoverageFrom
-  --collectCoverageOnlyFrom
-  --color
-  --colors
-  -c, --config
-  --coverage
-  --coverageDirectory
-  --coveragePathIgnorePatterns
-  --coverageProvider
-  --coverageReporters
-  --coverageThreshold
-  --debug
-  --detectLeaks
-  --detectOpenHandles
-  --env
-  --errorOnDeprecated
-  -e, --expand
-  --filter
-  --findRelatedTests
-  --forceExit
-  --globalSetup
-  --globalTeardown
-  --globals
-  --haste
-  --init
-  --injectGlobals
   --json
-  --lastCommit
-  --listTests
-  --logHeapUsage
-  --maxConcurrency
-  -w, --maxWorkers
-  --moduleDirectories
-  --moduleFileExtensions
-  --moduleNameMapper
-  --modulePathIgnorePatterns
-  --modulePaths
-  --noStackTrace
-  --notify
-  --notifyMode
-  -o, --onlyChanged
-  -f, --onlyFailures
-  --outputFile
-  --passWithNoTests
-  --preset
-  --prettierPath
-  --projects
-  --reporters
-  --resetMocks
-  --resetModules
-  --resolver
-  --restoreMocks
-  --rootDir
-  --roots
-  -i, --runInBand
-  --runTestsByPath
-  --runner
-  --selectProjects
-  --setupFiles
-  --setupFilesAfterEnv
-  --showConfig
-  --silent
-  --skipFilter
-  --snapshotSerializers
-  --testEnvironment
-  --testEnvironmentOptions
-  --testFailureExitCode
-  --testLocationInResults
-  --testMatch
-  -t, --testNamePattern
-  --testPathIgnorePatterns
-  --testPathPattern
-  --testRegex
-  --testResultsProcessor
-  --testRunner
-  --testSequencer
-  --testTimeout
-  --testURL
-  --timers
-  --transform
-  --transformIgnorePatterns
-  --unmockedModulePathPatterns
-  -u, --updateSnapshot
-  --useStderr
-  --verbose
-  --watch
-  --watchAll
-  --watchPathIgnorePatterns
-  --watchman
+  -h, --help
+```
+
+### `backstage-cli repo test`
+
+```
+Usage: backstage-cli repo test [options]
+
+Options:
+  --since <ref>
+  --successCache
+  --successCacheDir <path>
+  --jest-help
+  -h, --help
 ```
 
 ### `backstage-cli versions:bump`
@@ -549,15 +486,18 @@ Usage: backstage-cli versions:bump [options]
 Options:
   --pattern <glob>
   --release <version|next|main>
+  --skip-install
+  --skip-migrate
   -h, --help
 ```
 
-### `backstage-cli versions:check`
+### `backstage-cli versions:migrate`
 
 ```
-Usage: backstage-cli versions:check [options]
+Usage: backstage-cli versions:migrate [options]
 
 Options:
-  --fix
+  --pattern <glob>
+  --skip-code-changes
   -h, --help
 ```

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { withLogCollector } from '@backstage//test-utils';
+import { withLogCollector } from '@backstage/test-utils';
 import { AppIdentityProxy } from './AppIdentityProxy';
 
 describe('AppIdentityProxy', () => {
@@ -89,6 +89,6 @@ describe('AppIdentityProxy', () => {
     });
 
     await proxy.signOut();
-    expect(location.href).toBe('/foo');
+    expect(window.location.href).toBe('/foo');
   });
 });

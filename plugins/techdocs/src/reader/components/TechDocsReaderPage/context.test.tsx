@@ -15,13 +15,14 @@
  */
 
 import React from 'react';
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook, waitFor } from '@testing-library/react';
 
-import { ThemeProvider } from '@material-ui/core';
+import { ThemeProvider } from '@material-ui/core/styles';
 
 import { lightTheme } from '@backstage/theme';
 import { TestApiProvider } from '@backstage/test-utils';
 import { Entity, CompoundEntityRef } from '@backstage/catalog-model';
+import { configApiRef } from '@backstage/core-plugin-api';
 import {
   techdocsApiRef,
   TechDocsMetadata,
@@ -52,6 +53,10 @@ const techdocsApiMock = {
   getTechDocsMetadata: jest.fn().mockResolvedValue(mockTechDocsMetadata),
 };
 
+const configApiMock = {
+  getOptionalBoolean: jest.fn().mockReturnValue(undefined),
+};
+
 const wrapper = ({
   entityRef = {
     kind: mockEntityMetadata.kind,
@@ -64,7 +69,12 @@ const wrapper = ({
   children: React.ReactNode;
 }) => (
   <ThemeProvider theme={lightTheme}>
-    <TestApiProvider apis={[[techdocsApiRef, techdocsApiMock]]}>
+    <TestApiProvider
+      apis={[
+        [techdocsApiRef, techdocsApiMock],
+        [configApiRef, configApiMock],
+      ]}
+    >
       <TechDocsReaderPageProvider entityRef={entityRef}>
         {children}
       </TechDocsReaderPageProvider>
@@ -85,16 +95,13 @@ describe('context', () => {
     });
 
     it('should return expected entity values', async () => {
-      const { result, waitForNextUpdate } = renderHook(
-        () => useEntityMetadata(),
-        { wrapper },
-      );
+      const { result } = renderHook(() => useEntityMetadata(), { wrapper });
 
-      await waitForNextUpdate();
-
-      expect(result.current.value).toBeDefined();
-      expect(result.current.error).toBeUndefined();
-      expect(result.current.value).toMatchObject(mockEntityMetadata);
+      await waitFor(() => {
+        expect(result.current.value).toBeDefined();
+        expect(result.current.error).toBeUndefined();
+        expect(result.current.value).toMatchObject(mockEntityMetadata);
+      });
     });
   });
 
@@ -106,16 +113,13 @@ describe('context', () => {
     });
 
     it('should return expected techdocs metadata values', async () => {
-      const { result, waitForNextUpdate } = renderHook(
-        () => useTechDocsMetadata(),
-        { wrapper },
-      );
+      const { result } = renderHook(() => useTechDocsMetadata(), { wrapper });
 
-      await waitForNextUpdate();
-
-      expect(result.current.value).toBeDefined();
-      expect(result.current.error).toBeUndefined();
-      expect(result.current.value).toMatchObject(mockTechDocsMetadata);
+      await waitFor(() => {
+        expect(result.current.value).toBeDefined();
+        expect(result.current.error).toBeUndefined();
+        expect(result.current.value).toMatchObject(mockTechDocsMetadata);
+      });
     });
   });
 });

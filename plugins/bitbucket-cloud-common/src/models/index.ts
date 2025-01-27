@@ -33,33 +33,20 @@ export namespace Models {
    * @public
    */
   export interface Account extends ModelObject {
-    /**
-     * The status of the account. Currently the only possible value is "active", but more values may be added in the future.
-     */
-    account_status?: string;
     created_on?: string;
     display_name?: string;
-    has_2fa_enabled?: boolean;
     links?: AccountLinks;
-    /**
-     * Account name defined by the owner. Should be used instead of the "username" field. Note that "nickname" cannot be used in place of "username" in URLs and queries, as "nickname" is not guaranteed to be unique.
-     */
-    nickname?: string;
     username?: string;
     uuid?: string;
-    website?: string;
   }
 
   /**
+   * Links related to an Account.
    * @public
    */
   export interface AccountLinks {
+    [key: string]: unknown;
     avatar?: Link;
-    followers?: Link;
-    following?: Link;
-    html?: Link;
-    repositories?: Link;
-    self?: Link;
   }
 
   /**
@@ -120,7 +107,7 @@ export namespace Models {
    * @public
    */
   export type BaseCommitSummaryMarkupEnum =
-    typeof BaseCommitSummaryMarkupEnum[keyof typeof BaseCommitSummaryMarkupEnum];
+    (typeof BaseCommitSummaryMarkupEnum)[keyof typeof BaseCommitSummaryMarkupEnum];
 
   /**
    * A branch object, representing a branch in a repository.
@@ -159,7 +146,7 @@ export namespace Models {
    * @public
    */
   export type BranchMergeStrategiesEnum =
-    typeof BranchMergeStrategiesEnum[keyof typeof BranchMergeStrategiesEnum];
+    (typeof BranchMergeStrategiesEnum)[keyof typeof BranchMergeStrategiesEnum];
 
   /**
    * A repository commit object.
@@ -204,7 +191,7 @@ export namespace Models {
    * @public
    */
   export type CommitFileAttributesEnum =
-    typeof CommitFileAttributesEnum[keyof typeof CommitFileAttributesEnum];
+    (typeof CommitFileAttributesEnum)[keyof typeof CommitFileAttributesEnum];
 
   /**
    * A link to a resource related to this object.
@@ -267,6 +254,39 @@ export namespace Models {
   }
 
   /**
+   * A paginated list of projects.
+   * @public
+   */
+  export interface PaginatedProjects extends Paginated<Project> {
+    /**
+     * The values of the current page.
+     */
+    values?: Set<Project>;
+  }
+
+  /**
+   * A paginated list of workspaces.
+   * @public
+   */
+  export interface PaginatedWorkspaces extends Paginated<Workspace> {
+    /**
+     * The values of the current page.
+     */
+    values?: Set<Workspace>;
+  }
+
+  /**
+   * A paginated list of branches.
+   * @public
+   */
+  export interface PaginatedBranches extends Paginated<Branch> {
+    /**
+     * The values of the current page.
+     */
+    values?: Set<Branch>;
+  }
+
+  /**
    * Object describing a user's role on resources like commits or pull requests.
    * @public
    */
@@ -278,7 +298,7 @@ export namespace Models {
     participated_on?: string;
     role?: ParticipantRoleEnum;
     state?: ParticipantStateEnum;
-    user?: User;
+    user?: Account;
   }
 
   /**
@@ -293,7 +313,7 @@ export namespace Models {
    * @public
    */
   export type ParticipantRoleEnum =
-    typeof ParticipantRoleEnum[keyof typeof ParticipantRoleEnum];
+    (typeof ParticipantRoleEnum)[keyof typeof ParticipantRoleEnum];
 
   /**
    * @public
@@ -308,7 +328,7 @@ export namespace Models {
    * @public
    */
   export type ParticipantStateEnum =
-    typeof ParticipantStateEnum[keyof typeof ParticipantStateEnum];
+    (typeof ParticipantStateEnum)[keyof typeof ParticipantStateEnum];
 
   /**
    * A Bitbucket project.
@@ -386,7 +406,19 @@ export namespace Models {
      * The concatenation of the repository owner's username and the slugified name, e.g. "evzijst/interruptingcow". This is the same string used in Bitbucket URLs.
      */
     full_name?: string;
+    /**
+     *
+     * The issue tracker for this repository is enabled. Issue Tracker
+     * features are not supported for repositories in workspaces
+     * administered through admin.atlassian.com.
+     */
     has_issues?: boolean;
+    /**
+     *
+     * The wiki for this repository is enabled. Wiki
+     * features are not supported for repositories in workspaces
+     * administered through admin.atlassian.com.
+     */
     has_wiki?: boolean;
     is_private?: boolean;
     language?: string;
@@ -436,7 +468,7 @@ export namespace Models {
    * @public
    */
   export type RepositoryForkPolicyEnum =
-    typeof RepositoryForkPolicyEnum[keyof typeof RepositoryForkPolicyEnum];
+    (typeof RepositoryForkPolicyEnum)[keyof typeof RepositoryForkPolicyEnum];
 
   /**
    * @public
@@ -449,7 +481,7 @@ export namespace Models {
    * @public
    */
   export type RepositoryScmEnum =
-    typeof RepositoryScmEnum[keyof typeof RepositoryScmEnum];
+    (typeof RepositoryScmEnum)[keyof typeof RepositoryScmEnum];
 
   /**
    * @public
@@ -516,17 +548,61 @@ export namespace Models {
    * A team object.
    * @public
    */
-  export interface Team extends Account {}
+  export interface Team extends Account {
+    links?: TeamLinks;
+  }
 
   /**
-   * A user object.
+   * Links related to a Team.
    * @public
    */
-  export interface User extends Account {
+  export interface TeamLinks extends AccountLinks {
+    html?: Link;
+    members?: Link;
+    projects?: Link;
+    repositories?: Link;
+    self?: Link;
+  }
+
+  /**
+   * A Bitbucket workspace.
+   *             Workspaces are used to organize repositories.
+   * @public
+   */
+  export interface Workspace extends ModelObject {
+    created_on?: string;
     /**
-     * The user's Atlassian account ID.
+     * Indicates whether the workspace is publicly accessible, or whether it is
+     * private to the members and consequently only visible to members.
      */
-    account_id?: string;
-    is_staff?: boolean;
+    is_private?: boolean;
+    links?: WorkspaceLinks;
+    /**
+     * The name of the workspace.
+     */
+    name?: string;
+    /**
+     * The short label that identifies this workspace.
+     */
+    slug?: string;
+    updated_on?: string;
+    /**
+     * The workspace's immutable id.
+     */
+    uuid?: string;
+  }
+
+  /**
+   * @public
+   */
+  export interface WorkspaceLinks {
+    avatar?: Link;
+    html?: Link;
+    members?: Link;
+    owners?: Link;
+    projects?: Link;
+    repositories?: Link;
+    self?: Link;
+    snippets?: Link;
   }
 }
